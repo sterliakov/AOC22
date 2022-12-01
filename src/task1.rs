@@ -1,6 +1,5 @@
-use text_io::{scan, read};
 use std::cmp::max;
-
+use text_io::{read, scan};
 
 fn process_spaced(processor: &mut dyn FnMut(i32)) {
     let mut inp: String;
@@ -9,12 +8,14 @@ fn process_spaced(processor: &mut dyn FnMut(i32)) {
 
     loop {
         scan!("{}\n", inp);
-        if inp.len() > 0 {
+        if !inp.is_empty() {
             let a: i32 = read!("{}", inp.bytes());
             sum += a;
             last_failed = false;
         } else {
-            if last_failed {break;}
+            if last_failed {
+                break;
+            }
             last_failed = true;
             processor(sum);
             sum = 0;
@@ -22,14 +23,12 @@ fn process_spaced(processor: &mut dyn FnMut(i32)) {
     }
 }
 
-
 #[allow(dead_code)]
 pub fn prob1() {
     let mut max_: i32 = 0;
-    process_spaced(&mut |x| {max_ = max(max_, x)});
+    process_spaced(&mut |x| max_ = max(max_, x));
     println!("{}", max_);
 }
-
 
 #[allow(dead_code)]
 pub fn prob2() {

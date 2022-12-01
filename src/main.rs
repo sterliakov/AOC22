@@ -3,5 +3,5 @@ mod task1;
 use crate::task1::{prob1, prob2};
 
 fn main() {
-	prob2();
+    prob2();
 }
