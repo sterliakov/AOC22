@@ -1,6 +1,6 @@
-mod task1;
+mod task2;
 #[allow(unused_imports)]
-use crate::task1::{prob1, prob2};
+use crate::task2::{prob1, prob2};
 
 fn main() {
     prob2();
