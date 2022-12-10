@@ -5,7 +5,6 @@ enum Command {
     Addx(i32),
     Nop,
 }
-
 impl Command {
     fn parse(line: &str) -> Command {
         let mut words_iter = line.split_whitespace();
@@ -17,92 +16,66 @@ impl Command {
     }
 }
 
-trait Cycle {
-    fn tick(&mut self);
-    fn next(&mut self, inc: i32);
-
-    fn solve(&mut self) {
-        loop {
-            let inp: String;
-            scan!("{}\n", inp);
-            if inp.is_empty() {
-                break;
-            }
-
-            self.tick();
-            self.next(0);
-
-            match Command::parse(&inp) {
-                Command::Nop => {}
-                Command::Addx(inc) => {
-                    self.tick();
-                    self.next(inc);
-                }
-            }
-        }
-    }
-}
-
 #[derive(Debug)]
-struct Cycle1 {
-    cycle: i32,
-    x: i32,
-    total: i32,
-}
-#[derive(Debug)]
-struct Cycle2 {
+struct Cycle {
     cycle: i32,
     x: i32,
 }
-
-impl Cycle1 {
-    const TARGETS: [i32; 6] = [20, 60, 100, 140, 180, 220];
-}
-
-impl Cycle for Cycle1 {
-    fn tick(&mut self) {
-        if Self::TARGETS.contains(&self.cycle) {
-            self.total += self.cycle * self.x;
-        }
-    }
+impl Cycle {
     fn next(&mut self, inc: i32) {
         self.cycle += 1;
         self.x += inc;
     }
 }
-impl Cycle for Cycle2 {
-    fn tick(&mut self) {
-        print!(
-            "{}",
-            if (self.x - self.cycle % 40 + 1).abs() <= 1 {
-                '#'
-            } else {
-                '.'
-            }
-        );
-        if self.cycle % 40 == 0 {
-            println!();
+
+const TARGETS: [i32; 6] = [20, 60, 100, 140, 180, 220];
+
+fn solve(tick: &mut dyn FnMut(&mut Cycle)) {
+    let mut cycle = Cycle { cycle: 1, x: 1 };
+    loop {
+        let inp: String;
+        scan!("{}\n", inp);
+        if inp.is_empty() {
+            break;
         }
-    }
-    fn next(&mut self, inc: i32) {
-        self.cycle += 1;
-        self.x += inc;
+
+        tick(&mut cycle);
+        cycle.next(0);
+
+        match Command::parse(&inp) {
+            Command::Nop => {}
+            Command::Addx(inc) => {
+                tick(&mut cycle);
+                cycle.next(inc);
+            }
+        }
     }
 }
 
 #[allow(dead_code)]
 pub fn prob1() {
-    let mut cycle = Cycle1 {
-        cycle: 1,
-        x: 1,
-        total: 0,
+    let mut total = 0i32;
+    let mut tick = |cycle: &mut Cycle| {
+        if TARGETS.contains(&cycle.cycle) {
+            total += cycle.cycle * cycle.x;
+        }
     };
-    cycle.solve();
-    println!("{}", cycle.total);
+    solve(&mut tick);
+    println!("{}", total);
 }
 
 #[allow(dead_code)]
 pub fn prob2() {
-    let mut cycle = Cycle2 { cycle: 1, x: 1 };
-    cycle.solve();
+    let mut tick = |cycle: &mut Cycle| {
+        if (cycle.x - cycle.cycle % 40 + 1).abs() <= 1 {
+            print!("#")
+        } else {
+            print!(".")
+        }
+
+        if cycle.cycle % 40 == 0 {
+            println!();
+        }
+    };
+    solve(&mut tick);
 }
