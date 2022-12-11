@@ -1,6 +1,6 @@
+use sscanf::sscanf;
 use std::collections::VecDeque;
 use std::vec::Vec;
-use text_io::{read, scan};
 
 #[derive(Debug)]
 struct Test {
@@ -9,16 +9,6 @@ struct Test {
     target_false: usize,
 }
 impl Test {
-    fn read_next() -> Test {
-        let divisor: u64 = read!("  Test: divisible by {}\n");
-        let target_true: usize = read!("    If true: throw to monkey {}\n");
-        let target_false: usize = read!("    If false: throw to monkey {}\n");
-        Test {
-            divisor,
-            target_true,
-            target_false,
-        }
-    }
     fn get_target(&self, worry: &u64) -> usize {
         if worry % self.divisor == 0 {
             self.target_true
@@ -35,9 +25,7 @@ enum Op {
     Square,
 }
 impl Op {
-    fn read_next() -> Op {
-        let op: String = read!("  Operation: new = old {}\n");
-        let (op, right) = op.split_once(' ').unwrap();
+    fn new(op: &str, right: &str) -> Op {
         match (op, right) {
             ("*", "old") => Self::Square,
             ("*", r) => Self::Mul(r.parse().expect("Must be a number")),
@@ -62,36 +50,38 @@ struct Monkey {
     inspects: u64,
 }
 impl Monkey {
-    fn read_next() -> Monkey {
-        let line: String = read!("  Starting items: {}\n");
-        let hand: VecDeque<u64> = line
-            .split(", ")
-            .map(|x| x.parse().expect("Bad number"))
-            .collect();
+    fn parse(block: &str) -> Monkey {
+        let (_, items, op, right, divisor, target_true, target_false) = sscanf!(
+            block,
+            "Monkey {usize}:
+  Starting items: {str}
+  Operation: new = old {str} {str}
+  Test: divisible by {u64}
+    If true: throw to monkey {usize}
+    If false: throw to monkey {usize}"
+        )
+        .expect("Invalid input");
         Monkey {
-            hand,
-            op: Op::read_next(),
-            test: Test::read_next(),
+            hand: items
+                .split(", ")
+                .map(|x| x.parse().expect("Bad number"))
+                .collect(),
+            op: Op::new(op, right),
+            test: Test {
+                divisor,
+                target_true,
+                target_false,
+            },
             inspects: 0,
         }
     }
 }
 
-fn read_input() -> Vec<Monkey> {
-    let mut monkeys = Vec::<Monkey>::new();
-    loop {
-        let mut inp: String;
-        scan!("{}\n", inp);
-        if inp.is_empty() {
-            break monkeys;
-        }
-        monkeys.push(Monkey::read_next());
-        scan!("{}\n", inp);
-    }
+fn read_input(inp: &str) -> Vec<Monkey> {
+    inp.trim().split("\n\n").map(Monkey::parse).collect()
 }
 
-fn solve<const ROUNDS: u64, const RELAX: u64>() {
-    let mut monkeys = read_input();
+fn solve<const ROUNDS: u64, const RELAX: u64>(monkeys: &mut Vec<Monkey>) -> u64 {
     let modulo =
         monkeys
             .iter()
@@ -111,15 +101,37 @@ fn solve<const ROUNDS: u64, const RELAX: u64>() {
     }
     let mut inspects: Vec<_> = monkeys.iter().map(|m| m.inspects).collect();
     inspects.sort();
-    println!("{}", inspects.iter().rev().take(2).product::<u64>());
+    inspects.iter().rev().take(2).product::<u64>()
 }
 
 #[allow(dead_code)]
-pub fn prob1() {
-    solve::<20, 3>();
+pub fn prob1(inp: &str) -> u64 {
+    solve::<20, 3>(&mut read_input(inp))
 }
 
 #[allow(dead_code)]
-pub fn prob2() {
-    solve::<10_000, 1>();
+pub fn prob2(inp: &str) -> u64 {
+    solve::<10_000, 1>(&mut read_input(inp))
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{prob1, prob2};
+    use std::fs;
+
+    #[test]
+    fn part_1_example() {
+        assert_eq!(
+            prob1(&fs::read_to_string("inputs/task11/example.txt").unwrap()),
+            10605,
+        );
+    }
+
+    #[test]
+    fn part_2_example() {
+        assert_eq!(
+            prob2(&fs::read_to_string("inputs/task11/example.txt").unwrap()),
+            2713310158,
+        );
+    }
 }
