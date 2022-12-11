@@ -1,4 +1,3 @@
-use eval::Expr;
 use std::collections::VecDeque;
 use std::vec::Vec;
 use text_io::{read, scan};
@@ -20,7 +19,7 @@ impl Test {
             target_false,
         }
     }
-    fn get_target(&self, worry: u64) -> usize {
+    fn get_target(&self, worry: &u64) -> usize {
         if worry % self.divisor == 0 {
             self.target_true
         } else {
@@ -30,9 +29,35 @@ impl Test {
 }
 
 #[derive(Debug)]
+enum Op {
+    Add(u64),
+    Mul(u64),
+    Square,
+}
+impl Op {
+    fn read_next() -> Op {
+        let op: String = read!("  Operation: new = old {}\n");
+        let (op, right) = op.split_once(' ').unwrap();
+        match (op, right) {
+            ("*", "old") => Self::Square,
+            ("*", r) => Self::Mul(r.parse().expect("Must be a number")),
+            ("+", r) => Self::Add(r.parse().expect("Must be a number")),
+            _ => unreachable!("Unknown input format"),
+        }
+    }
+    fn exec(&self, left: &u64) -> u64 {
+        match self {
+            Self::Square => left * left,
+            Self::Mul(r) => left * r,
+            Self::Add(r) => left + r,
+        }
+    }
+}
+
+#[derive(Debug)]
 struct Monkey {
     hand: VecDeque<u64>,
-    op: String,
+    op: Op,
     test: Test,
     inspects: u64,
 }
@@ -43,21 +68,12 @@ impl Monkey {
             .split(", ")
             .map(|x| x.parse().expect("Bad number"))
             .collect();
-        let op: String = read!("  Operation: new = {}\n");
         Monkey {
             hand,
-            op,
+            op: Op::read_next(),
             test: Test::read_next(),
             inspects: 0,
         }
-    }
-    fn eval_op(&self, worry: u64) -> u64 {
-        Expr::new(&self.op)
-            .value("old", worry)
-            .exec()
-            .expect("Should be valid expression")
-            .as_u64()
-            .expect("Should be a number")
     }
 }
 
@@ -85,8 +101,8 @@ fn solve(rounds: u64, proc: &mut dyn FnMut(u64) -> u64) {
         for i in 0..monkeys.len() {
             while let Some(item) = monkeys[i].hand.pop_front() {
                 let m = &monkeys[i];
-                let worry = proc(m.eval_op(item)) % modulo;
-                let idx = m.test.get_target(worry);
+                let worry = proc(m.op.exec(&item) % modulo);
+                let idx = m.test.get_target(&worry);
                 monkeys[idx].hand.push_back(worry);
                 monkeys[i].inspects += 1;
             }
