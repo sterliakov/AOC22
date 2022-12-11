@@ -2,6 +2,7 @@ mod task11;
 use crate::task11::{prob1, prob2};
 use std::env;
 use std::fs;
+use std::time::Instant;
 
 const DAY: u8 = 11;
 
@@ -16,9 +17,11 @@ fn main() {
         }
         _ => panic!("Unknown target"),
     };
+    let now = Instant::now();
     match args[1].as_str() {
         "1" => println!("{}", prob1(&inp)),
         "2" => println!("{}", prob2(&inp)),
         _ => panic!("Unknown part"),
     }
+    println!("Time spent: {:.2?}", now.elapsed());
 }
