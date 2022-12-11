@@ -90,18 +90,18 @@ fn read_input() -> Vec<Monkey> {
     }
 }
 
-fn solve(rounds: u64, proc: &mut dyn FnMut(u64) -> u64) {
+fn solve<const ROUNDS: u64, const RELAX: u64>() {
     let mut monkeys = read_input();
     let modulo =
         monkeys
             .iter()
             .map(|x| x.test.divisor)
             .fold(1, |acc, x| if acc % x == 0 { acc } else { acc * x });
-    for _ in 1..=rounds {
+    for _ in 1..=ROUNDS {
         for i in 0..monkeys.len() {
             while let Some(item) = monkeys[i].hand.pop_front() {
                 let m = &monkeys[i];
-                let worry = proc(m.op.exec(&item) % modulo);
+                let worry = m.op.exec(&item) % modulo / RELAX;
                 let idx = m.test.get_target(&worry);
                 monkeys[idx].hand.push_back(worry);
                 monkeys[i].inspects += 1;
@@ -116,10 +116,10 @@ fn solve(rounds: u64, proc: &mut dyn FnMut(u64) -> u64) {
 
 #[allow(dead_code)]
 pub fn prob1() {
-    solve(20, &mut |x| x / 3);
+    solve::<20, 3>();
 }
 
 #[allow(dead_code)]
 pub fn prob2() {
-    solve(10_000, &mut |x| x);
+    solve::<10_000, 1>();
 }
