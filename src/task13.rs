@@ -24,26 +24,18 @@ fn properly_ordered(left: &JsonValue, right: &JsonValue, index: usize) -> Orderi
     } else if b.is_null() {
         Ordering::Greater
     } else if a.is_number() && b.is_number() {
-        match a.as_u32().partial_cmp(&b.as_u32()) {
-            None => panic!("Something wrong"),
-            Some(Ordering::Equal) => properly_ordered(left, right, index + 1),
-            Some(o) => o,
-        }
+        a.as_u32()
+            .partial_cmp(&b.as_u32())
+            .unwrap()
+            .then_with(|| properly_ordered(left, right, index + 1))
     } else if a.is_number() {
-        match properly_ordered(&array![a.clone()], b, 0) {
-            Ordering::Equal => properly_ordered(left, right, index + 1),
-            o => o,
-        }
+        properly_ordered(&array![a.clone()], b, 0)
+            .then_with(|| properly_ordered(left, right, index + 1))
     } else if b.is_number() {
-        match properly_ordered(a, &array![b.clone()], 0) {
-            Ordering::Equal => properly_ordered(left, right, index + 1),
-            o => o,
-        }
+        properly_ordered(a, &array![b.clone()], 0)
+            .then_with(|| properly_ordered(left, right, index + 1))
     } else {
-        match properly_ordered(a, b, 0) {
-            Ordering::Equal => properly_ordered(left, right, index + 1),
-            o => o,
-        }
+        properly_ordered(a, b, 0).then_with(|| properly_ordered(left, right, index + 1))
     }
 }
 
@@ -52,8 +44,7 @@ fn find_insertion_pos(pairs: &[&JsonValue], target: &JsonValue) -> usize {
 }
 
 pub fn prob1(inp: &str) -> usize {
-    let pairs = parse_input(inp);
-    pairs
+    parse_input(inp)
         .iter()
         .enumerate()
         .map(|(i, (left, right))| {
