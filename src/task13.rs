@@ -39,7 +39,10 @@ fn properly_ordered(left: &JsonValue, right: &JsonValue, index: usize) -> Orderi
 }
 
 fn find_insertion_pos(pairs: &[&JsonValue], target: &JsonValue) -> usize {
-    pairs.partition_point(|el| properly_ordered(el, target, 0).is_le())
+    pairs
+        .iter()
+        .filter(|el| properly_ordered(el, target, 0).is_le())
+        .count()
 }
 
 pub fn prob1(inp: &str) -> usize {
@@ -57,14 +60,13 @@ pub fn prob1(inp: &str) -> usize {
 }
 pub fn prob2(inp: &str) -> usize {
     let pairs = parse_input(inp);
-    let mut pairs: Vec<_> = pairs
+    let pairs: Vec<_> = pairs
         .iter()
         .flat_map(|(left, right)| [left, right])
         .collect();
-    pairs.sort_by(|a, b| properly_ordered(a, b, 0));
     let a = array![array![2]];
     let b = array![array![6]];
-    (find_insertion_pos(&pairs, &a) + 1) * (find_insertion_pos(&pairs, &b) + 2)
+    (1 + find_insertion_pos(&pairs, &a)) * (find_insertion_pos(&pairs, &b) + 2)
 }
 
 #[cfg(test)]
