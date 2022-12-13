@@ -14,7 +14,7 @@ fn parse_input(inp: &str) -> Vec<(JsonValue, JsonValue)> {
         .collect()
 }
 
-fn properly_ordered(left: &JsonValue, right: &JsonValue, index: usize) -> Ordering {
+fn my_cmp(left: &JsonValue, right: &JsonValue, index: usize) -> Ordering {
     let (a, b) = (&left[index], &right[index]);
     if a.is_null() && b.is_null() {
         Ordering::Equal
@@ -26,22 +26,20 @@ fn properly_ordered(left: &JsonValue, right: &JsonValue, index: usize) -> Orderi
         a.as_u32()
             .partial_cmp(&b.as_u32())
             .unwrap()
-            .then_with(|| properly_ordered(left, right, index + 1))
+            .then_with(|| my_cmp(left, right, index + 1))
     } else if a.is_number() {
-        properly_ordered(&array![a.clone()], b, 0)
-            .then_with(|| properly_ordered(left, right, index + 1))
+        my_cmp(&array![a.clone()], b, 0).then_with(|| my_cmp(left, right, index + 1))
     } else if b.is_number() {
-        properly_ordered(a, &array![b.clone()], 0)
-            .then_with(|| properly_ordered(left, right, index + 1))
+        my_cmp(a, &array![b.clone()], 0).then_with(|| my_cmp(left, right, index + 1))
     } else {
-        properly_ordered(a, b, 0).then_with(|| properly_ordered(left, right, index + 1))
+        my_cmp(a, b, 0).then_with(|| my_cmp(left, right, index + 1))
     }
 }
 
 fn find_insertion_pos(pairs: &[&JsonValue], target: &JsonValue) -> usize {
     pairs
         .iter()
-        .filter(|el| properly_ordered(el, target, 0).is_le())
+        .filter(|el| my_cmp(el, target, 0).is_le())
         .count()
 }
 
@@ -50,7 +48,7 @@ pub fn prob1(inp: &str) -> usize {
         .iter()
         .enumerate()
         .map(|(i, (left, right))| {
-            if properly_ordered(left, right, 0).is_le() {
+            if my_cmp(left, right, 0).is_le() {
                 i + 1
             } else {
                 0
