@@ -1,5 +1,4 @@
 use json::{array, JsonValue};
-use std::iter;
 use std::{cmp::Ordering, vec::Vec};
 
 fn parse_input(inp: &str) -> Vec<(JsonValue, JsonValue)> {
@@ -60,7 +59,7 @@ pub fn prob2(inp: &str) -> usize {
     let pairs = parse_input(inp);
     let mut pairs: Vec<_> = pairs
         .iter()
-        .flat_map(|(left, right)| iter::once(left).chain(iter::once(right)))
+        .flat_map(|(left, right)| [left, right])
         .collect();
     pairs.sort_by(|a, b| properly_ordered(a, b, 0));
     let a = array![array![2]];
