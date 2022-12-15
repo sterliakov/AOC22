@@ -39,22 +39,18 @@ fn parse_input(inp: &str) -> (isize, Vec<Info>) {
 pub fn prob1(inp: &str) -> isize {
     let (y, records) = parse_input(inp);
     let mut acc = IntRangeUnionFind::new();
-    records
-        .iter()
-        .filter_map(|r| {
-            let dx = (r.sensor.1.abs_diff(y) - r.distance) as isize;
-            if dx > 0 {
-                None
-            } else {
-                Some(r.sensor.0 + dx..=r.sensor.0 - dx)
-            }
-        })
-        .for_each(|range| acc.insert_range(&range).unwrap());
-    records
-        .into_iter()
-        .filter(|r| r.beacon.1 == y)
-        .map(|r| r.beacon.0)
-        .for_each(|x| acc.remove_range_pair(&x, &x).unwrap());
+    for r in records.iter() {
+        let dx = r.sensor.1.abs_diff(y) as isize - r.distance as isize;
+        if dx < 0 {
+            acc.insert_range(&(r.sensor.0 + dx..=r.sensor.0 - dx))
+                .unwrap();
+        }
+    }
+    for r in records {
+        if r.beacon.1 == y {
+            acc.remove_range_pair(&r.beacon.0, &r.beacon.0).unwrap();
+        }
+    }
 
     acc.into_collection::<Vec<_>>()
         .iter()
