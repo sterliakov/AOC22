@@ -4,52 +4,33 @@ use std::collections::HashMap;
 use std::iter;
 use std::vec::Vec;
 
-type ValveName = u64;
-
 #[derive(Debug)]
 struct Valve {
-    // name: ValveName,
     rate: u32,
-    targets: Vec<ValveName>,
+    targets: Vec<u64>,
 }
 
 #[derive(Debug)]
 struct State {
-    who: ValveName,
+    who: u64,
     opened_mask: u64,
     pressure: u32,
 }
 
-fn parse_input(inp: &str) -> (HashMap<ValveName, Valve>, HashMap<String, u64>) {
-    let mut indices = HashMap::<String, u64>::new();
+fn parse_input(inp: &str) -> (HashMap<u64, Valve>, HashMap<&str, u64>) {
+    let mut indices = HashMap::<&str, u64>::new();
     (
         inp.trim()
             .split('\n')
             .map(|row| {
-                let (name, rate, targets) = sscanf!(
+                let (name, rate, _, _, _, targets) = sscanf!(
                     row,
-                    "Valve {String} has flow rate={u32}; tunnels lead to valves {String}"
+                    "Valve {str} has flow rate={u32}; tunnel{str}lead{str}to {str} {str}"
                 )
-                .unwrap_or_else(|_| {
-                    sscanf!(
-                        row,
-                        "Valve {String} has flow rate={u32}; tunnel leads to valve {String}"
-                    )
-                    .unwrap()
-                });
-                (
-                    name,
-                    rate,
-                    targets
-                        .split(", ")
-                        .map(|x| x.to_string())
-                        .collect::<Vec<_>>(),
-                )
-            })
-            .map(|(name, rate, targets)| {
+                .unwrap();
                 let i = 1u64 << indices.len();
                 indices.insert(name, i);
-                (i, rate, targets)
+                (i, rate, targets.split(", ").collect::<Vec<_>>())
             })
             .collect::<Vec<_>>()
             .iter()
@@ -68,58 +49,52 @@ fn parse_input(inp: &str) -> (HashMap<ValveName, Valve>, HashMap<String, u64>) {
 }
 
 fn solve(
-    graph: &HashMap<ValveName, Valve>,
-    indices: &HashMap<String, u64>,
+    graph: &HashMap<u64, Valve>,
+    indices: &HashMap<&str, u64>,
     steps: u32,
-) -> HashMap<(ValveName, u64), u32> {
-    let mut best = HashMap::<(ValveName, u64), (u32, u32)>::new();
+) -> HashMap<(u64, u64), u32> {
+    assert!(graph.len() <= 64, "Does not fir into u64 mask");
+    let mut best = HashMap::<(u64, u64), u32>::new();
     let mut states = vec![State {
         who: indices["AA"],
         opened_mask: 0,
         pressure: 0,
     }];
-    for t in 0..steps {
+    for t in 1..=steps {
         states = states
             .iter()
-            .filter_map(
-                |State {
-                     who,
-                     opened_mask: mask,
-                     pressure,
-                 }| {
-                    let key = (*who, *mask);
-                    if best.contains_key(&key) && pressure <= &best[&key].0 {
-                        return None;
-                    }
-                    best.insert(key, (*pressure, t));
+            .filter_map(|s| {
+                let key = (s.who, s.opened_mask);
+                if best.contains_key(&key) && s.pressure <= best[&key] {
+                    return None;
+                }
+                best.insert(key, s.pressure);
 
-                    let Valve { rate, targets, .. } = &graph[who];
-                    Some(
-                        iter::once(if mask & *who as u64 == 0 && *rate > 0 {
-                            Some(State {
-                                who: *who,
-                                opened_mask: mask | *who as u64,
-                                pressure: pressure + rate * (steps - t - 1),
-                            })
-                        } else {
-                            None
+                let Valve { rate, targets, .. } = &graph[&s.who];
+                Some(
+                    iter::once(if s.opened_mask & s.who == 0 && *rate > 0 {
+                        Some(State {
+                            who: s.who,
+                            opened_mask: s.opened_mask | s.who,
+                            pressure: s.pressure + rate * (steps - t),
                         })
-                        .chain(targets.iter().map(|dest| {
-                            Some(State {
-                                who: *dest,
-                                opened_mask: *mask,
-                                pressure: *pressure,
-                            })
-                        })),
-                    )
-                },
-            )
+                    } else {
+                        None
+                    })
+                    .chain(targets.iter().map(|dest| {
+                        Some(State {
+                            who: *dest,
+                            opened_mask: s.opened_mask,
+                            pressure: s.pressure,
+                        })
+                    })),
+                )
+            })
             .flatten()
             .flatten()
             .collect();
     }
-    best.retain(|_, v| v.1 == steps - 1);
-    best.into_iter().map(|(k, v)| (k, v.0)).collect()
+    best
 }
 
 pub fn prob1(inp: &str) -> u32 {
@@ -136,12 +111,19 @@ pub fn prob2(inp: &str) -> u32 {
     best.sort_by_key(|(_, v)| Reverse(*v));
 
     let mut a = 0;
-    'outer: for ((_, m2), v2) in best.iter() {
-        for ((_, m1), v1) in best.iter() {
+    let mut best_2 = 0;
+    'outer: for ((_, m2), v2) in &best {
+        for ((_, m1), v1) in &best {
+            if **v1 <= best_2 {
+                break;
+            }
             if m1 & m2 == 0 {
                 a = a.max(**v1 + **v2);
+                best_2 = **v1;
                 if v1 > v2 {
                     break 'outer;
+                } else {
+                    break;
                 }
             }
         }
