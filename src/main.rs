@@ -1,10 +1,10 @@
-mod task15;
-use crate::task15::{prob1, prob2};
+mod task16;
+use crate::task16::{prob1, prob2};
 use std::env;
 use std::fs;
 use std::time::Instant;
 
-const DAY: u8 = 15;
+const DAY: u8 = 16;
 
 fn main() {
     let args: Vec<_> = env::args().collect();
