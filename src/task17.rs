@@ -1,4 +1,5 @@
-use std::{collections::HashMap, vec::Vec};
+use hashbrown::HashMap;
+use std::vec::Vec;
 
 const WIDTH: usize = 7;
 const ROCKS: [&[(usize, usize)]; 5] = [
