@@ -1,10 +1,10 @@
-mod task17;
-use crate::task17::{prob1, prob2};
+mod task18;
+use crate::task18::{prob1, prob2};
 use std::env;
 use std::fs;
 use std::time::Instant;
 
-const DAY: u8 = 17;
+const DAY: u8 = 18;
 
 fn main() {
     let args: Vec<_> = env::args().collect();
@@ -17,7 +17,7 @@ fn main() {
         }
         _ => panic!("Unknown target"),
     };
-    let inp = inp.strip_suffix('\n').unwrap();
+    let inp = inp.trim();
     let now = Instant::now();
     match args[1].as_str() {
         "1" => println!("{}", prob1(inp)),
