@@ -1,5 +1,7 @@
-use itertools::Itertools;
+use hashbrown::HashSet;
+use rustc_hash::FxHasher as Hasher;
 use sscanf::sscanf;
+use std::hash::BuildHasherDefault;
 use std::{collections::VecDeque, vec::Vec};
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -57,14 +59,15 @@ fn score(blueprint: &[[i16; 4]], steps: i16) -> i16 {
                     allowed,
                     bought,
                 });
-                states = states
-                    .into_iter()
-                    .map(|mut s| {
+
+                states = HashSet::<_, BuildHasherDefault<Hasher>>::from_iter(
+                    states.into_iter().map(|mut s| {
                         s.completed = false;
                         s
-                    })
-                    .unique()
-                    .collect();
+                    }),
+                )
+                .into_iter()
+                .collect();
                 break;
             }
 
@@ -111,6 +114,7 @@ fn score(blueprint: &[[i16; 4]], steps: i16) -> i16 {
             if let Some(b) = bought {
                 robots[b as usize] += 1;
             }
+
             states.push_back(State {
                 robots,
                 balance,
