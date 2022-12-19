@@ -3,120 +3,96 @@ use sscanf::sscanf;
 use std::{collections::VecDeque, vec::Vec};
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-enum Status {
-    NotProcessed = 0,
-    BoughtRobot = 1,
-    Finished = 2,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-enum Resource {
-    Ore(i32),
-    Clay(i32),
-    Obsidian(i32),
-    #[allow(dead_code)]
-    Geode(i32),
-}
-impl Resource {
-    fn as_index_and_val(&self) -> (usize, i32) {
-        match self {
-            Self::Ore(i) => (0, *i),
-            Self::Clay(i) => (1, *i),
-            Self::Obsidian(i) => (2, *i),
-            Self::Geode(i) => (3, *i),
-        }
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 struct State {
-    rob: [(i32, i32); 4],
-    bal: [i32; 4],
-    status: Status,
+    robots: [i16; 4],
+    balance: [i16; 4],
+    completed: bool,
     allowed: u8,
+    bought: Option<u8>,
 }
 
-fn parse_input(inp: &str) -> Vec<[Vec<Resource>; 4]> {
+fn parse_input(inp: &str) -> Vec<[[i16; 4]; 4]> {
     inp.split('\n')
-        .map(|row| sscanf!(row, "Blueprint {usize}: Each ore robot costs {i32} ore. Each clay robot costs {i32} ore. Each obsidian robot costs {i32} ore and {i32} clay. Each geode robot costs {i32} ore and {i32} obsidian.").unwrap())
+        .map(|row| sscanf!(row, "Blueprint {usize}: Each ore robot costs {i16} ore. Each clay robot costs {i16} ore. Each obsidian robot costs {i16} ore and {i16} clay. Each geode robot costs {i16} ore and {i16} obsidian.").unwrap())
         .map(|(_, ore, clay, obs_1, obs_2, geo_1, geo_2)| [
-            vec![Resource::Ore(ore)],
-            vec![Resource::Ore(clay)],
-            vec![Resource::Ore(obs_1), Resource::Clay(obs_2)],
-            vec![Resource::Ore(geo_1), Resource::Obsidian(geo_2)],
+            [ore, 0, 0, 0],
+            [clay, 0, 0, 0],
+            [obs_1, obs_2, 0, 0],
+            [geo_1, 0, geo_2, 0],
         ])
         .collect()
 }
 
-fn score(blueprint: &[Vec<Resource>], steps: i32) -> i32 {
-    let max_spends = blueprint.iter().fold([0, 0, 0, 0], |mut acc, x| {
-        x.iter().for_each(|p| {
-            let (pos, val) = p.as_index_and_val();
-            acc[pos] = acc[pos].max(val);
-        });
-        acc
+fn score(blueprint: &[[i16; 4]], steps: i16) -> i16 {
+    let max_spends = blueprint.iter().fold([0, 0, 0, 0], |acc, x| {
+        acc.iter()
+            .zip(x)
+            .map(|(a, b)| *a.max(b))
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap()
     });
 
     let mut states = VecDeque::from([State {
-        rob: [(1, 1), (0, 0), (0, 0), (0, 0)],
-        bal: [0, 0, 0, 0],
-        status: Status::NotProcessed,
+        robots: [1, 0, 0, 0],
+        balance: [0, 0, 0, 0],
+        completed: false,
         allowed: 0b1111,
+        bought: None,
     }]);
     for step in 0..steps {
         while let Some(State {
-            mut rob,
-            mut bal,
-            status,
+            mut robots,
+            mut balance,
+            completed,
             mut allowed,
+            bought,
         }) = states.pop_front()
         {
-            if status == Status::Finished {
+            if completed {
                 states.push_front(State {
-                    rob,
-                    bal,
-                    status,
+                    robots,
+                    balance,
+                    completed: false,
                     allowed,
+                    bought,
                 });
-                states
-                    .iter_mut()
-                    .for_each(|s| s.status = Status::NotProcessed);
-                states = states.into_iter().unique().collect();
+                states = states
+                    .into_iter()
+                    .map(|mut s| {
+                        s.completed = false;
+                        s
+                    })
+                    .unique()
+                    .collect();
                 break;
             }
 
-            allowed = if status == Status::NotProcessed {
+            allowed = if bought.is_none() {
                 if step < steps - 1 {
                     blueprint
                         .iter()
                         .enumerate()
                         .map(|(idx, r)| {
-                            if allowed & (1 << idx) == 0 {
+                            let flag = 1 << idx;
+                            if allowed & flag == 0 || idx < 3 && robots[idx] >= max_spends[idx] {
                                 return 0;
                             }
-                            if idx < 3 && rob[idx].1 >= max_spends[idx] {
-                                return 0;
+                            let mut new_balance = balance;
+                            for (b, p) in new_balance.iter_mut().zip(r) {
+                                *b -= p;
+                                if *b < 0 {
+                                    return 0;
+                                }
                             }
-                            let mut new_balance = bal;
-                            r.iter().for_each(|p| match p {
-                                Resource::Ore(i) => new_balance[0] -= i,
-                                Resource::Clay(i) => new_balance[1] -= i,
-                                Resource::Obsidian(i) => new_balance[2] -= i,
-                                Resource::Geode(i) => new_balance[3] -= i,
+                            states.push_front(State {
+                                robots,
+                                balance: new_balance,
+                                completed: false,
+                                allowed,
+                                bought: Some(idx as u8),
                             });
-                            if new_balance.iter().min().unwrap() >= &0 {
-                                let mut new_rob = rob;
-                                new_rob[idx].1 += 1;
-                                states.push_front(State {
-                                    rob: new_rob,
-                                    bal: new_balance,
-                                    status: Status::BoughtRobot,
-                                    allowed,
-                                });
-                                1 << idx
-                            } else {
-                                0
-                            }
+                            flag
                         })
                         .fold(0, |acc, x| acc | x)
                 } else {
@@ -126,35 +102,38 @@ fn score(blueprint: &[Vec<Resource>], steps: i32) -> i32 {
                 0
             };
 
-            rob.iter_mut().enumerate().for_each(|(i, r)| {
-                bal[i] += r.0;
+            robots.iter_mut().enumerate().for_each(|(i, r)| {
+                balance[i] += *r;
                 if i != 3 {
-                    bal[i] = bal[i].min((steps - step - 1) * max_spends[i]);
+                    balance[i] = balance[i].min((steps - step - 1) * max_spends[i]);
                 }
-                r.0 = r.1;
             });
+            if let Some(b) = bought {
+                robots[b as usize] += 1;
+            }
             states.push_back(State {
-                rob,
-                bal,
-                status: Status::Finished,
+                robots,
+                balance,
+                completed: true,
                 allowed: 0b1111 & !allowed,
+                bought: None,
             });
         }
-        // println!("Step {step} done, with {} states", states.len());
+        println!("Step {step} done, with {} states", states.len());
     }
-    states.iter().map(|s| s.bal[3]).max().unwrap()
+    states.iter().map(|s| s.balance[3]).max().unwrap()
 }
 
-pub fn prob1(inp: &str) -> i32 {
+pub fn prob1(inp: &str) -> i16 {
     let blueprints = parse_input(inp);
     blueprints
         .into_iter()
         .enumerate()
-        .map(|(i, b)| (i + 1) as i32 * score(&b, 24))
+        .map(|(i, b)| (i + 1) as i16 * score(&b, 24))
         .sum()
 }
 
-pub fn prob2(inp: &str) -> i32 {
+pub fn prob2(inp: &str) -> i16 {
     let blueprints = parse_input(inp);
     blueprints
         .into_iter()
