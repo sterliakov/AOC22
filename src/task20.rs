@@ -1,40 +1,26 @@
-use linked_list::LinkedList;
+use std::collections::VecDeque;
 
-fn parse_input(inp: &str) -> LinkedList<(i64, usize)> {
+fn parse_input(inp: &str) -> VecDeque<(i64, usize)> {
     inp.split('\n')
         .enumerate()
         .map(|(i, row)| (row.parse().unwrap(), i))
         .collect()
 }
 
-fn solve(list: &mut LinkedList<(i64, usize)>, repeats: usize) -> i64 {
-    let l = list.len() as i64;
+fn solve(list: &mut VecDeque<(i64, usize)>, repeats: usize) -> i64 {
+    let len = list.len();
+    let lm1 = len as i64 - 1;
     for _ in 0..repeats {
-        for step in 0..l as usize {
-            let mut index = None;
-            for (i, nxt) in list.iter().enumerate() {
-                if nxt.1 == step {
-                    index = Some(i);
-                    break;
-                }
-            }
-            match index {
-                None => unreachable!(),
-                Some(index) => {
-                    let node = list.remove(index).unwrap();
-                    let target = (node.0 + index as i64).rem_euclid(l - 1);
-                    list.insert(target as usize, node);
-                }
-            }
+        for step in 0..len {
+            let index = list.iter().position(|nxt| nxt.1 == step).unwrap();
+            let node = list.remove(index).unwrap();
+            let target = (node.0 + index as i64).rem_euclid(lm1);
+            list.insert(target as usize, node);
         }
     }
 
-    let list: Vec<_> = list.into_iter().collect();
     let f = list.iter().position(|x| x.0 == 0).unwrap();
-
-    list[(f + 1000) % l as usize].0
-        + list[(f + 2000) % l as usize].0
-        + list[(f + 3000) % l as usize].0
+    list[(f + 1000) % len].0 + list[(f + 2000) % len].0 + list[(f + 3000) % len].0
 }
 
 pub fn prob1(inp: &str) -> i64 {
@@ -44,7 +30,7 @@ pub fn prob1(inp: &str) -> i64 {
 
 pub fn prob2(inp: &str) -> i64 {
     let mut list = parse_input(inp);
-    list = list.iter().map(|(x, i)| (x * 811589153, *i)).collect();
+    list.iter_mut().for_each(|(x, _)| *x *= 811_589_153);
     solve(&mut list, 10)
 }
 
