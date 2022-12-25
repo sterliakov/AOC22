@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use std::{
     fmt::{self, Display},
     str::FromStr,
@@ -13,49 +14,52 @@ struct Snafu {
 impl FromStr for Snafu {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut values = Vec::with_capacity(s.len());
-        for digit in s.bytes().rev() {
-            let num = match digit {
-                b'2' => 2,
-                b'1' => 1,
-                b'0' => 0,
-                b'-' => -1,
-                b'=' => -2,
-                _ => return Err("Unknown digit".to_string()),
-            };
-            values.push(num);
-        }
+        let values = s
+            .bytes()
+            .rev()
+            .map(|digit| match digit {
+                b'2' => Ok(2),
+                b'1' => Ok(1),
+                b'0' => Ok(0),
+                b'-' => Ok(-1),
+                b'=' => Ok(-2),
+                _ => Err("Unknown digit".to_string()),
+            })
+            .collect::<Result<Vec<_>, _>>()?;
         Ok(Self { values })
     }
 }
 impl Display for Snafu {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut repr = String::new();
-        // Not .map().join() to return Err instead of panic
-        for x in self.values.iter().rev() {
-            let digit = match x {
-                2 => '2',
-                1 => '1',
-                0 => '0',
-                -1 => '-',
-                -2 => '=',
-                _ => return fmt::Result::Err(fmt::Error {}),
-            };
-            repr.push(digit);
-        }
-
-        write!(f, "{}", repr)
+        let repr = self
+            .values
+            .iter()
+            .rev()
+            .map(|x| match x {
+                2 => Ok('2'),
+                1 => Ok('1'),
+                0 => Ok('0'),
+                -1 => Ok('-'),
+                -2 => Ok('='),
+                _ => Err(()),
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|_| fmt::Error {})?
+            .iter()
+            .join("");
+        write!(f, "{repr}")
     }
 }
 
 impl From<Snafu> for i64 {
     fn from(value: Snafu) -> Self {
-        let mut inc = 1;
-        value.values.iter().fold(0i64, |acc, digit| {
-            let res = acc + inc * digit;
-            inc *= BASE;
-            res
-        })
+        value
+            .values
+            .iter()
+            .fold((0i64, 1i64), |(res, inc), digit| {
+                (res + inc * digit, inc * BASE)
+            })
+            .0
     }
 }
 impl From<i64> for Snafu {
